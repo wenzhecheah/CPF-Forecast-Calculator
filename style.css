@@ -1,0 +1,30 @@
+body { font-family: -apple-system, sans-serif; background: #f6f7f9; color: #1d1d1f; margin: 0; }
+main { max-width: 720px; margin: 0 auto; padding: 16px; }
+form { display: grid; gap: 20px; background: #fff; padding: 16px; border-radius: 12px; }
+label { display: grid; gap: 6px; font-size: 14px; }
+input, select, button { font-size: 16px; padding: 10px; border-radius: 8px; border: 1px solid #ccc; }
+button { background: #c8102e; color: #fff; border: none; cursor: pointer; }
+table { width: 100%; margin-top: 16px; border-collapse: collapse; background: #fff; }
+th, td { padding: 8px; text-align: right; border-bottom: 1px solid #eee; }
+th:first-child, td:first-child { text-align: left; }
+.limits { font-size: 14px; background: #f6f7f9; border-radius: 8px; padding: 10px; }
+.limits:empty { display: none; }
+.limits dl { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; margin: 0; }
+.limits dd { margin: 0; text-align: right; }
+.note td { text-align: left; font-size: 13px; color: #555; background: #fdf3f4; }
+/* Keep note text in view while the table is scrolled sideways. */
+.note td > div { position: sticky; left: 8px; max-width: min(660px, calc(100vw - 64px)); }
+.footnote { font-size: 12px; color: #8a8a8e; }
+/* The table scrolls inside its own box, so the sideways scrollbar is always
+   on screen, and the header row stays visible while scrolling down. */
+.table-wrap { max-height: 75vh; overflow: auto; margin-top: 16px; border-radius: 8px; background: #fff; }
+.table-wrap table { margin-top: 0; }
+thead th { position: sticky; top: 0; z-index: 1; background: #fff; box-shadow: inset 0 -1px 0 #ddd; }
+.check { display: flex; align-items: flex-start; gap: 8px; }
+.check input { margin: 2px 0 0; padding: 0; width: 18px; height: 18px; flex: none; }
+.check:has(input:disabled) { color: #8a8a8e; }
+.hint { font-size: 12px; color: #8a8a8e; }
+.group { display: grid; gap: 20px; }
+.group[hidden] { display: none; }
+th:nth-child(2), td:nth-child(2) { text-align: left; }
+.tag { font-size: 11px; color: #8a8a8e; white-space: nowrap; }

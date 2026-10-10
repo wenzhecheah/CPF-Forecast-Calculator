@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CPF Forecast Calculator</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main>
+    <h1>CPF Forecast Calculator</h1>
+    <form id="cpf-form">
+      <label>Date of birth <input type="date" id="dob" required></label>
+      <div id="limits" class="limits"></div>
+      <label>Ordinary Account (OA) <input type="text" inputmode="decimal" class="money" id="oa" placeholder="$0.00"></label>
+      <label><span>Special Account (SA), or RA if turning <span data-cpf="raAge"></span> or older this year</span> <input type="text" inputmode="decimal" class="money" id="sa" placeholder="$0.00"></label>
+      <label>MediSave Account (MA) <input type="text" inputmode="decimal" class="money" id="ma" placeholder="$0.00"></label>
+      <label>Monthly salary
+        <span class="hint">Contributions apply to the first <span data-cpf="owCeiling"></span> a month. Assumed the same every year.</span>
+        <input type="text" inputmode="decimal" class="money" id="salary" placeholder="$0.00">
+      </label>
+      <label>Working until age
+        <span class="hint">Salary contributions stop after this age.</span>
+        <input type="number" id="workUntilAge" min="16" max="95">
+      </label>
+      <label>MediSave above BHS goes to
+        <select id="maOverflow">
+          <option value="official">CPF rule: SA/RA up to FRS, then OA</option>
+          <option value="split" data-cpf="splitLabel"></option>
+        </select>
+      </label>
+      <label><span>Retirement sum to aim for in the RA at <span data-cpf="raAge"></span></span>
+        <select id="raTarget">
+          <option value="frs">Full Retirement Sum (FRS), CPF default</option>
+          <option value="ers">Enhanced Retirement Sum (ERS), falls back to FRS if not reachable</option>
+        </select>
+      </label>
+      <label class="check"><input type="checkbox" id="pledged">
+        I have pledged a property (minimum to keep in the RA becomes the BRS)</label>
+      <label class="check"><input type="checkbox" id="withdrawAboveBRS" disabled>
+        <span>Withdraw RA savings above the BRS as cash at <span data-cpf="raAge"></span></span></label>
+      <label>Forecast to age <input type="number" id="targetAge" min="1" max="95"></label>
+      <div id="payoutGroup" class="group" hidden>
+      <label>Start CPF LIFE monthly payouts at age
+        <select id="payoutAge"></select>
+      </label>
+      <label>CPF LIFE plan
+        <select id="cpfLifePlan"></select>
+      </label>
+      <label>Starting monthly payout from CPF's Monthly Payout Estimator
+        <span id="estimateHint" class="hint">Optional. If entered, replaces the app's estimate.</span>
+        <input type="text" inputmode="decimal" class="money" id="cpfEstimate" placeholder="$0.00">
+      </label>
+      </div>
+      <button type="submit">Calculate</button>
+    </form>
+    <section id="results"></section>
+  </main>
+  <script src="cpf-data.js"></script>
+  <script src="cpf-lookups.js"></script>
+  <script src="config.js"></script>
+  <script src="engine.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
