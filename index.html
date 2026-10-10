@@ -9,52 +9,162 @@
 <body>
   <main>
     <h1>CPF Forecast Calculator</h1>
-    <form id="cpf-form">
-      <label>Date of birth <input type="date" id="dob" required></label>
-      <div id="limits" class="limits"></div>
-      <label>Ordinary Account (OA) <input type="text" inputmode="decimal" class="money" id="oa" placeholder="$0.00"></label>
-      <label><span>Special Account (SA), or RA if turning <span data-cpf="raAge"></span> or older this year</span> <input type="text" inputmode="decimal" class="money" id="sa" placeholder="$0.00"></label>
-      <label>MediSave Account (MA) <input type="text" inputmode="decimal" class="money" id="ma" placeholder="$0.00"></label>
-      <label>Monthly salary
-        <span class="hint">Contributions apply to the first <span data-cpf="owCeiling"></span> a month. Assumed the same every year.</span>
-        <input type="text" inputmode="decimal" class="money" id="salary" placeholder="$0.00">
-      </label>
-      <label>Working until age
-        <span class="hint">Salary contributions stop after this age.</span>
-        <input type="number" id="workUntilAge" min="16" max="95">
-      </label>
-      <label>MediSave above BHS goes to
-        <select id="maOverflow">
-          <option value="official">CPF rule: SA/RA up to FRS, then OA</option>
-          <option value="split" data-cpf="splitLabel"></option>
-        </select>
-      </label>
-      <label><span>Retirement sum to aim for in the RA at <span data-cpf="raAge"></span></span>
-        <select id="raTarget">
-          <option value="frs">Full Retirement Sum (FRS), CPF default</option>
-          <option value="ers">Enhanced Retirement Sum (ERS), falls back to FRS if not reachable</option>
-        </select>
-      </label>
-      <label class="check"><input type="checkbox" id="pledged">
-        I have pledged a property (minimum to keep in the RA becomes the BRS)</label>
-      <label class="check"><input type="checkbox" id="withdrawAboveBRS" disabled>
-        <span>Withdraw RA savings above the BRS as cash at <span data-cpf="raAge"></span></span></label>
-      <label>Forecast to age <input type="number" id="targetAge" min="1" max="95"></label>
-      <div id="payoutGroup" class="group" hidden>
-      <label>Start CPF LIFE monthly payouts at age
-        <select id="payoutAge"></select>
-      </label>
-      <label>CPF LIFE plan
-        <select id="cpfLifePlan"></select>
-      </label>
-      <label>Starting monthly payout from CPF's Monthly Payout Estimator
-        <span id="estimateHint" class="hint">Optional. If entered, replaces the app's estimate.</span>
-        <input type="text" inputmode="decimal" class="money" id="cpfEstimate" placeholder="$0.00">
-      </label>
-      </div>
+    <form id="cpf-form" novalidate>
+      <fieldset>
+        <legend>You and your CPF today</legend>
+        <label>Date of birth <input type="date" id="dob" required></label>
+        <div id="limits" class="limits"></div>
+        <label>Ordinary Account (OA) <input type="text" inputmode="decimal" class="money" id="oa" placeholder="$0.00"></label>
+        <label><span>Special Account (SA), or RA if turning <span data-cpf="raAge"></span> or older this year</span> <input type="text" inputmode="decimal" class="money" id="sa" placeholder="$0.00"></label>
+        <label>MediSave Account (MA) <input type="text" inputmode="decimal" class="money" id="ma" placeholder="$0.00"></label>
+      </fieldset>
+
+      <fieldset>
+        <legend>Work and income</legend>
+        <label>Contribution rates
+          <select id="memberType"></select>
+        </label>
+        <label><span id="salaryLabel">Monthly salary</span>
+          <span id="salaryHint" class="hint"></span>
+          <input type="text" inputmode="decimal" class="money" id="salary" placeholder="$0.00">
+        </label>
+        <div class="row2">
+          <label id="bonusField">Yearly bonus, in months of salary
+            <span class="hint">Includes any 13th month (AWS).</span>
+            <input type="number" id="bonusMonths" min="0" max="24" step="0.1" inputmode="decimal">
+          </label>
+          <label>Salary increase each year, %
+            <span class="hint">0 keeps it the same every year.</span>
+            <input type="number" id="salaryGrowth" min="-20" max="30" step="0.1" inputmode="decimal">
+          </label>
+        </div>
+        <label>Working until age
+          <span class="hint">Contributions stop after this age.</span>
+          <input type="number" id="workUntilAge">
+        </label>
+      </fieldset>
+
+      <details id="housingSection">
+        <summary>Housing paid from OA</summary>
+        <div class="group">
+          <div class="row2">
+            <label>One-off payment (e.g. downpayment)
+              <input type="text" inputmode="decimal" class="money" id="oaDownpayment" placeholder="$0.00">
+            </label>
+            <label>At age
+              <span class="hint">Blank: this year.</span>
+              <input type="number" id="oaDownpaymentAge">
+            </label>
+          </div>
+          <div class="row2">
+            <label>Monthly loan payment from OA
+              <input type="text" inputmode="decimal" class="money" id="oaHousingMonthly" placeholder="$0.00">
+            </label>
+            <label>Until age
+              <span class="hint">Blank: every year.</span>
+              <input type="number" id="oaHousingUntilAge">
+            </label>
+          </div>
+          <p class="hint">If OA runs short, the rest is assumed to be paid in cash.</p>
+        </div>
+      </details>
+
+      <details id="medisaveSection">
+        <summary>MediSave insurance premiums</summary>
+        <div class="group">
+          <div class="row2">
+            <label>Yearly premiums paid from MediSave
+              <span class="hint">MediShield Life, CareShield Life and Integrated Shield Plan premiums. Your CPF statement shows them.</span>
+              <input type="text" inputmode="decimal" class="money" id="maPremiums" placeholder="$0.00">
+            </label>
+            <label>Increase each year, %
+              <span class="hint">Premiums rise with age.</span>
+              <input type="number" id="maPremiumGrowth" min="0" max="30" step="0.1" inputmode="decimal">
+            </label>
+          </div>
+        </div>
+      </details>
+
+      <details id="topUpSection">
+        <summary>Top-ups and transfers</summary>
+        <div class="group">
+          <label><span>Cash top-up to SA (RA from <span data-cpf="raAge"></span>) each year</span>
+            <span class="hint">Up to the current FRS in the SA, or the current ERS in the RA. Tax relief up to <span data-cpf="taxRelief"></span> a year, only up to the FRS.</span>
+            <input type="text" inputmode="decimal" class="money" id="topUpSA" placeholder="$0.00">
+          </label>
+          <label>Transfer from OA to SA/RA each year
+            <span class="hint">Same limits as cash top-ups. Can't be reversed, and gets no tax relief.</span>
+            <input type="text" inputmode="decimal" class="money" id="transferOA" placeholder="$0.00">
+          </label>
+          <label>Cash top-up to MediSave each year
+            <span class="hint">Up to the BHS.</span>
+            <input type="text" inputmode="decimal" class="money" id="topUpMA" placeholder="$0.00">
+          </label>
+          <label>Make these top-ups until age
+            <span class="hint">Blank: every year.</span>
+            <input type="number" id="topUpUntilAge">
+          </label>
+          <label class="check"><input type="checkbox" id="mrssEligible">
+            <span><span>I qualify for the Matched Retirement Savings Scheme from <span data-cpf="mrssAge"></span></span>
+            <span class="hint"><span data-cpf="mrssCriteria"></span> The government matches cash top-ups to the RA up to <span data-cpf="mrssMatch"></span> a year (<span data-cpf="mrssCap"></span> lifetime) while the RA is below the current BRS.</span></span>
+          </label>
+        </div>
+      </details>
+
+      <fieldset>
+        <legend>At <span data-cpf="raAge"></span></legend>
+        <label>MediSave above BHS goes to
+          <select id="maOverflow">
+            <option value="official">CPF rule: SA/RA up to FRS, then OA</option>
+            <option value="split" data-cpf="splitLabel"></option>
+          </select>
+        </label>
+        <label><span>Retirement sum to aim for in the RA at <span data-cpf="raAge"></span></span>
+          <select id="raTarget">
+            <option value="frs">Full Retirement Sum (FRS), CPF default</option>
+            <option value="ers">Enhanced Retirement Sum (ERS), falls back to FRS if not reachable</option>
+          </select>
+        </label>
+        <label class="check"><input type="checkbox" id="pledged">
+          I have pledged a property (minimum to keep in the RA becomes the BRS)</label>
+        <label class="check"><input type="checkbox" id="withdrawAboveBRS" disabled>
+          <span><span>Withdraw RA savings above the BRS as cash at <span data-cpf="raAge"></span></span></span></label>
+        <label class="check"><input type="checkbox" id="withdrawAt55">
+          <span><span>Withdraw everything else allowed as cash at <span data-cpf="raAge"></span></span>
+          <span class="hint">At least <span data-cpf="minWithdrawal"></span>, or all OA savings left after setting aside the RA.</span></span></label>
+      </fieldset>
+
+      <fieldset>
+        <legend>Forecast</legend>
+        <label>Forecast to age <input type="number" id="targetAge" required></label>
+        <label class="check"><input type="checkbox" id="projectSums">
+          <span>Project future retirement sums and BHS
+          <span class="hint">CPF hasn't published them past <span data-cpf="latestSums"></span>. Ticked: they grow <span data-cpf="growthText"></span>, as estimates. Unticked: the latest published figures are reused, which makes the FRS and BHS look easier to reach than they will be.</span></span>
+        </label>
+        <div id="payoutGroup" class="group" hidden>
+          <label>Start CPF LIFE monthly payouts at age
+            <select id="payoutAge"></select>
+          </label>
+          <label>CPF LIFE plan
+            <select id="cpfLifePlan"></select>
+          </label>
+          <label>Sex
+            <span class="hint">CPF's published payout figures are for men. Women's payouts are lower because they live longer on average.</span>
+            <select id="sex">
+              <option value="male">Male</option>
+              <option value="female">Female</option>
+            </select>
+          </label>
+          <label>Starting monthly payout from CPF's Monthly Payout Estimator
+            <span id="estimateHint" class="hint">Optional. If entered, replaces the app's estimate.</span>
+            <input type="text" inputmode="decimal" class="money" id="cpfEstimate" placeholder="$0.00">
+          </label>
+        </div>
+      </fieldset>
+      <p id="formError" class="error" role="alert" hidden></p>
       <button type="submit">Calculate</button>
     </form>
-    <section id="results"></section>
+    <section id="results" aria-live="polite"></section>
   </main>
   <script src="cpf-data.js"></script>
   <script src="cpf-lookups.js"></script>

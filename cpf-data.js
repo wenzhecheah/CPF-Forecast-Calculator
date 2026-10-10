@@ -7,8 +7,9 @@
 // - Retirement sums: usually announced at Budget.
 // - Interest rates: reviewed every quarter.
 // - Contribution / allocation rates: usually change on 1 January.
-// Forecast years beyond the last row reuse the last row's figures.
-// Last verified Oct 2026.
+// Forecast years beyond the last row reuse the last row's figures, unless the
+// user chooses to project retirement sums and the BHS (see config.js).
+// Last verified Oct 2026 against cpf.gov.sg.
 const CPF_DATA = {
   // Ages and years where CPF rules change.
   milestones: {
@@ -90,39 +91,141 @@ const CPF_DATA = {
     { from: '2027-01-01', brs: 114100, frs: 228200, ers: 456400 },
   ],
 
-  // Monthly contributions from salary: Singapore Citizens and SPRs (3rd year
-  // onwards), private sector. Source: CPF contribution and allocation rate
-  // tables from 1 January 2026. `upTo` is the highest age in each band.
+  // Contributions from salary, private sector. Sources: CPF contribution rate
+  // tables from 1 January 2026 (Tables 1 to 3), and CPF's "New CPF contribution
+  // rates for senior workers" (from 1 January 2027). `upTo` is the highest age
+  // in each band. Each rate table applies from 1 January of `from` until the
+  // next one; years after the last table reuse it.
   contributions: {
-    year: 2026,
-    owCeiling: 8000, // contributions apply to monthly salary up to this amount
-    // Lower rates for low salaries: nothing up to `nil`; employer share only
-    // up to `employerOnly`; then the employee share phases in at
-    // `employeePhaseIn` x the employee rate on the amount above `employerOnly`,
-    // reaching the full rate at `full`.
+    owCeiling: 8000,       // Ordinary Wages: contributions apply to monthly salary up to this
+    annualCeiling: 102000, // Additional Wages (bonuses) ceiling = this - OW subject to CPF in the year
+    // Lower rates for low salaries (same rule in every table): nothing up to
+    // `nil`; employer share only (as % of total wages) up to `employerOnly`;
+    // then the employee share phases in at `employeePhaseIn` x the employee
+    // rate on the amount above `employerOnly`, reaching the full rate at `full`.
     lowWage: { nil: 50, employerOnly: 500, full: 750, employeePhaseIn: 3 },
-    // % of salary, for salary above lowWage.full.
-    rates: [
-      { upTo: 55,       employer: 17,   employee: 20 },
-      { upTo: 60,       employer: 16,   employee: 18 },
-      { upTo: 65,       employer: 12.5, employee: 12.5 },
-      { upTo: 70,       employer: 9,    employee: 7.5 },
-      { upTo: Infinity, employer: 7.5,  employee: 5 },
-    ],
+    // Who the rates apply to. A Singapore Permanent Resident (SPR) pays
+    // graduated rates in the 1st and 2nd year of SPR status, then full rates.
+    // `next` is the type the following calendar year (an approximation: CPF
+    // switches in the month after each SPR anniversary).
+    memberTypes: {
+      full: { label: 'Singapore Citizen, or SPR from the 3rd year', next: 'full' },
+      pr1:  { label: 'SPR in the 1st year (graduated rates)',       next: 'pr2' },
+      pr2:  { label: 'SPR in the 2nd year (graduated rates)',       next: 'full' },
+    },
+    // % of salary, for salary above lowWage.full, by member type.
+    rates: {
+      full: [
+        { from: 2026, bands: [
+          { upTo: 55,       employer: 17,   employee: 20 },
+          { upTo: 60,       employer: 16,   employee: 18 },
+          { upTo: 65,       employer: 12.5, employee: 12.5 },
+          { upTo: 70,       employer: 9,    employee: 7.5 },
+          { upTo: Infinity, employer: 7.5,  employee: 5 },
+        ] },
+        // Budget 2026: higher rates for workers above 55 to 65.
+        { from: 2027, bands: [
+          { upTo: 55,       employer: 17,   employee: 20 },
+          { upTo: 60,       employer: 16.5, employee: 19 },
+          { upTo: 65,       employer: 13,   employee: 13 },
+          { upTo: 70,       employer: 9,    employee: 7.5 },
+          { upTo: Infinity, employer: 7.5,  employee: 5 },
+        ] },
+      ],
+      // Graduated employer and employee rates (G/G), unchanged since 2016.
+      pr1: [
+        { from: 2016, bands: [
+          { upTo: 60,       employer: 4,   employee: 5 },
+          { upTo: Infinity, employer: 3.5, employee: 5 },
+        ] },
+      ],
+      pr2: [
+        { from: 2016, bands: [
+          { upTo: 55,       employer: 9,   employee: 15 },
+          { upTo: 60,       employer: 6,   employee: 12.5 },
+          { upTo: 65,       employer: 3.5, employee: 7.5 },
+          { upTo: Infinity, employer: 3.5, employee: 5 },
+        ] },
+      ],
+    },
     // Share of each contribution. MA and SA/RA are worked out first; OA gets
     // the remainder. From raAge the SA/RA share goes to the RA up to the
-    // current FRS, then to OA.
+    // current FRS, then to OA. Graduated SPR rates use the same shares.
     allocation: [
-      { upTo: 35,       sa: 0.1621, ma: 0.2162 },
-      { upTo: 45,       sa: 0.1891, ma: 0.2432 },
-      { upTo: 50,       sa: 0.2162, ma: 0.2702 },
-      { upTo: 55,       sa: 0.3108, ma: 0.2837 },
-      { upTo: 60,       sa: 0.3382, ma: 0.3088 },
-      { upTo: 65,       sa: 0.44,   ma: 0.42 },
-      { upTo: 70,       sa: 0.303,  ma: 0.6363 },
-      { upTo: Infinity, sa: 0.08,   ma: 0.84 },
+      { from: 2026, bands: [
+        { upTo: 35,       sa: 0.1621, ma: 0.2162 },
+        { upTo: 45,       sa: 0.1891, ma: 0.2432 },
+        { upTo: 50,       sa: 0.2162, ma: 0.2702 },
+        { upTo: 55,       sa: 0.3108, ma: 0.2837 },
+        { upTo: 60,       sa: 0.3382, ma: 0.3088 },
+        { upTo: 65,       sa: 0.44,   ma: 0.42 },
+        { upTo: 70,       sa: 0.303,  ma: 0.6363 },
+        { upTo: Infinity, sa: 0.08,   ma: 0.84 },
+      ] },
+      // From 2027 the whole rate increase for above 55 to 65 goes to the RA
+      // (CPF: "fully allocated to their Retirement Account"). As % of salary:
+      // above 55-60 RA 13, MA 10.5 (of 35.5); above 60-65 RA 12, MA 10.5 (of 26).
+      { from: 2027, bands: [
+        { upTo: 35,       sa: 0.1621, ma: 0.2162 },
+        { upTo: 45,       sa: 0.1891, ma: 0.2432 },
+        { upTo: 50,       sa: 0.2162, ma: 0.2702 },
+        { upTo: 55,       sa: 0.3108, ma: 0.2837 },
+        { upTo: 60,       sa: 0.3662, ma: 0.2958 },
+        { upTo: 65,       sa: 0.4615, ma: 0.4038 },
+        { upTo: 70,       sa: 0.303,  ma: 0.6363 },
+        { upTo: Infinity, sa: 0.08,   ma: 0.84 },
+      ] },
     ],
   },
+
+  // Self-employed persons (non-pensioners): only MediSave contributions are
+  // compulsory, on yearly net trade income (NTI). Source: CPF "MediSave
+  // Contribution Rates for SEPs (Non-Pensioners), applicable for 2026".
+  // Nothing up to `minNTI`; `low`% up to `phaseFrom`; phased in from `low`% to
+  // `full`% up to `fullFrom` (CPF's formula is a straight line from
+  // low% x phaseFrom to full% x fullFrom); then `full`% of NTI up to `ntiCap`.
+  // `below` is the age band, using age as at 1 January.
+  selfEmployed: {
+    label: 'Self-employed (MediSave contributions only)',
+    year: 2026,
+    minNTI: 6000, phaseFrom: 12000, fullFrom: 18000, ntiCap: 96000,
+    bands: [
+      { below: 35,       low: 4,    full: 8 },
+      { below: 45,       low: 4.5,  full: 9 },
+      { below: 50,       low: 5,    full: 10 },
+      { below: Infinity, low: 5.25, full: 10.5 },
+    ],
+  },
+
+  // Voluntary cash top-ups and transfers. Sources: cpf.gov.sg Retirement Sum
+  // Topping-Up Scheme, "Is there a maximum amount that I can save in my MediSave
+  // Account?", and IRAS CPF Cash Top-up Relief.
+  // - SA (below raAge): up to the current FRS. RA (from raAge): up to the
+  //   current ERS. The same limits apply to OA-to-SA/RA transfers.
+  // - MA: up to the BHS. Cash top-ups to MA aren't limited by the Annual Limit.
+  // - Tax relief: cash top-ups to your own SA/RA/MA, up to `taxRelief` a year
+  //   and only up to the FRS. OA transfers and matched (MRSS) top-ups get none.
+  topUps: { taxRelief: 8000 },
+
+  // Matched Retirement Savings Scheme, from 2025: the government matches cash
+  // top-ups to the RA dollar for dollar. Source: cpf.gov.sg "Matched Retirement
+  // Savings Scheme: what you need to know". Eligibility (checked by CPF each
+  // year): Singapore Citizen, aged `minAge`+, RA savings below the current BRS,
+  // average monthly income up to `maxMonthlyIncome`, home annual value up to
+  // `maxAnnualValue`, and at most `maxProperties` property. The grant is
+  // credited by the following March.
+  mrss: { minAge: 55, yearlyMatch: 2000, lifetimeCap: 20000,
+          maxMonthlyIncome: 4000, maxAnnualValue: 21000, maxProperties: 1 },
+
+  // Withdrawals from raAge: at least `minAtRaAge`, or all savings above the FRS
+  // (BRS with a property pledge), whichever is more. Cash top-ups and
+  // government grants can't be withdrawn. Source: cpf.gov.sg "How much CPF
+  // savings can I withdraw from age 55 to 64?".
+  withdrawal: { minAtRaAge: 5000 },
+
+  // Retirement sums as multiples of the BRS (from 2025: FRS 2x, ERS 4x). Used
+  // only when the user asks to project sums CPF hasn't published yet.
+  retirementSumRatios: { frs: 2, ers: 4 },
 
   // CPF LIFE monthly payouts.
   // Payouts can start any time from minAge (the payout eligibility age) to maxAge.
@@ -131,11 +234,17 @@ const CPF_DATA = {
     maxAge: 70,
     // Plans modelled. `escalation` is the % increase each year once payouts
     // start. `published`: CPF publishes payout estimates for this plan (see
-    // `estimates`). Escalating starts lower by an amount CPF does not publish,
-    // so its starting payout must come from CPF's Monthly Payout Estimator.
+    // `estimates`). Escalating starts lower, and Basic pays less (it keeps more
+    // in the RA for beneficiaries), by amounts CPF does not publish, so their
+    // starting payout must come from CPF's Monthly Payout Estimator.
+    // `description` is CPF's one-line summary of the plan.
     plans: {
-      standard:   { label: 'Standard',   escalation: 0, published: true },
-      escalating: { label: 'Escalating', escalation: 2, published: false },
+      standard:   { label: 'Standard',   escalation: 0, published: true,
+                    description: 'same payout every month for life' },
+      escalating: { label: 'Escalating', escalation: 2, published: false,
+                    description: 'starts lower, rises every year' },
+      basic:      { label: 'Basic',      escalation: 0, published: false,
+                    description: 'lower payouts, more left for beneficiaries' },
     },
     // CPF says each year of deferral raises payouts by "up to 7%" (35% at 70);
     // the actual figure depends on plan, gender, interest and life expectancy.
@@ -144,6 +253,8 @@ const CPF_DATA = {
     deferral: { low: 4, high: 7 },
     // CPF's published estimates for members turning 55 in 2026: Standard Plan,
     // male, payouts from 65. `ra65` is the RA balance at 65 each one assumes.
+    // CPF publishes no female figures; women's payouts are lower (longer life
+    // expectancy), so the app flags this.
     estimates: {
       cohort: 2026,
       points: [
