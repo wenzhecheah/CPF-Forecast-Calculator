@@ -70,6 +70,7 @@ This is an estimate, not advice. In particular:
 | `engine.js` | The forecast calculations |
 | `app.js` | The page: form, results, chart, sharing and export |
 | `index.html`, `style.css` | Page layout and styling |
+| `assets/` | The VWA logo for the browser tab and home-screen shortcuts (from vwagroup.sg) |
 
 ## Updating it
 
