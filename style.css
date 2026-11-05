@@ -4,27 +4,43 @@
   --cream: #f1e5d1; --soft-blue: #6a8dff;
   --bg: #f4f6fa; --surface: #fff; --text: #1a1a1a; --muted: #4a4a55;
   --line: rgba(27, 20, 100, .12); --border: rgba(27, 20, 100, .25); --radius: 4px;
+  --page: 1440px; --gutter: clamp(16px, 3vw, 48px); --stripe: #f8f9fc;
   --note: #faf5ec; --note-text: #4a4a55;
   --oa: var(--navy); --sa: var(--gold); --ma: var(--soft-blue); --up: #1e7d4f; --down: #b3261e;
 }
 /* Elements marked hidden stay hidden whatever display a rule gives them. */
 [hidden] { display: none !important; }
 body { font-family: 'Jost', system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); margin: 0; }
-.masthead { background: var(--navy); color: #fff; padding: 28px 16px 32px; }
-.masthead-inner { max-width: 720px; margin: 0 auto; }
+.masthead { position: relative; background: var(--navy); color: #fff; padding: 32px var(--gutter) 36px; }
+/* The website's gold horizon line along the bottom of the header. */
+.masthead::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 1px;
+  background: linear-gradient(to right, transparent, rgba(201, 158, 16, .6) 30%, rgba(201, 158, 16, .6) 70%, transparent); }
+.masthead-inner, .site-footer-inner { max-width: var(--page); margin: 0 auto; }
 .eyebrow { display: block; font-size: 12px; font-weight: 600; letter-spacing: .22em; text-transform: uppercase;
   color: var(--gold-soft); margin-bottom: 10px; }
 .masthead h1 { margin: 0; font-size: clamp(28px, 6vw, 40px); font-weight: 700; letter-spacing: -.01em; line-height: 1.1; }
 .masthead-tag { font-family: 'Cormorant Garamond', serif; font-style: italic; font-size: 20px;
   color: rgba(255, 255, 255, .85); margin: 10px 0 0; }
-main { max-width: 720px; margin: 0 auto; padding: 16px; }
-form { display: grid; gap: 20px; background: var(--surface); padding: 16px; border-radius: var(--radius);
-  border-top: 2px solid var(--gold); }
+main { max-width: var(--page); margin: 0 auto; padding: 24px var(--gutter) 40px; }
+/* The form: one column of section cards, two columns on wide screens
+   (essentials on the left, options and "At 55" on the right). */
+form { display: grid; gap: 16px; }
+.form-cols, .form-col { display: grid; gap: 16px; align-content: start; min-width: 0; }
+@media (min-width: 900px) {
+  .form-cols { grid-template-columns: 1fr 1fr; align-items: start; }
+  form > button[type="submit"] { justify-self: start; min-width: 280px; }
+}
+.panel { background: var(--surface); border-radius: var(--radius); padding: 20px;
+  border-top: 2px solid var(--gold); box-shadow: 0 12px 28px -22px rgba(27, 20, 100, .35); }
+.panel-cream { background: var(--cream); }
+.panel-cream .limits, .panel-cream input, .panel-cream select { background: var(--surface); }
 fieldset { border: 0; margin: 0; padding: 0; display: grid; gap: 20px; min-width: 0; }
-legend { font-weight: 600; font-size: 16px; padding: 0; margin-bottom: 12px; color: var(--navy); }
-details { border-top: 1px solid var(--line); padding-top: 16px; }
-details:last-of-type { border-bottom: 1px solid var(--line); padding-bottom: 16px; }
-summary { font-weight: 600; cursor: pointer; color: var(--navy); }
+legend { font-weight: 600; font-size: 17px; padding: 0; margin-bottom: 12px; color: var(--navy); }
+/* Short gold rule under each heading, as on the website. */
+legend::after { content: ""; display: block; width: 40px; height: 2px; background: var(--gold); margin-top: 8px; }
+details > .group { padding-top: 4px; }
+summary { font-weight: 600; font-size: 17px; cursor: pointer; color: var(--navy); }
+summary::marker { color: var(--gold); }
 details[open] summary { margin-bottom: 16px; }
 label { display: grid; gap: 6px; font-size: 14px; align-content: start; }
 input, select, button { font: inherit; font-size: 16px; padding: 10px; border-radius: var(--radius);
@@ -53,12 +69,15 @@ th:first-child, td:first-child { text-align: left; }
 .limits dd { margin: 0; text-align: right; }
 .note td { text-align: left; font-size: 13px; color: var(--note-text); background: var(--note); }
 /* Keep note text in view while the table is scrolled sideways. */
-.note td > div { position: sticky; left: 8px; max-width: min(660px, calc(100vw - 64px)); }
-.footnote { font-size: 12px; color: var(--muted); }
+.note td > div { position: sticky; left: 8px; max-width: min(900px, calc(100vw - 2 * var(--gutter) - 16px)); }
+.footnote { font-size: 12px; color: var(--muted); max-width: 120ch; }
 /* The table scrolls inside its own box, so the sideways scrollbar is always
    on screen, and the header row stays visible while scrolling down. */
-.table-wrap { max-height: 75vh; overflow: auto; margin-top: 16px; border-radius: var(--radius); background: var(--surface); }
+.table-wrap { max-height: 75vh; overflow: auto; margin-top: 16px; border-radius: var(--radius); background: var(--surface);
+  border-top: 2px solid var(--gold); }
 thead th { position: sticky; top: 0; z-index: 1; background: var(--navy); color: #fff; font-weight: 500; }
+tbody tr:not(.note):nth-child(even) td { background: var(--stripe); }
+tbody tr:not(.note):hover td { background: rgba(201, 158, 16, .08); }
 .check { display: flex; align-items: flex-start; gap: 8px; }
 .check input { margin: 2px 0 0; padding: 0; width: 18px; height: 18px; flex: none; }
 .check > span { display: grid; gap: 4px; }
@@ -70,10 +89,11 @@ th:nth-child(2), td:nth-child(2) { text-align: left; }
 .tag { font-size: 11px; color: var(--muted); white-space: nowrap; }
 
 /* Results */
-#results h2 { margin: 24px 0 12px; color: var(--navy); }
+#results h2 { margin: 32px 0 16px; color: var(--navy); font-size: 26px; }
+#results h2::after { content: ""; display: block; width: 40px; height: 2px; background: var(--gold); margin-top: 8px; }
 .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
-.card { background: var(--surface); border-radius: var(--radius); padding: 10px 12px; }
-.card.main { grid-column: 1 / -1; background: var(--navy); color: #fff; border-top: 2px solid var(--gold); }
+.card { background: var(--surface); border-radius: var(--radius); padding: 12px 14px; border-left: 2px solid var(--soft-blue); }
+.card.main { grid-column: 1 / -1; background: var(--navy); color: #fff; border-left: 0; border-top: 2px solid var(--gold); }
 .card.main .card-label { color: var(--gold-soft); }
 .card-label { font-size: 12px; color: var(--muted); }
 .card-value { font-size: 17px; font-weight: 600; margin-top: 2px; color: var(--navy); }
@@ -86,7 +106,7 @@ th:nth-child(2), td:nth-child(2) { text-align: left; }
 .actions button { font-size: 12px; padding: 8px 12px; letter-spacing: .12em; background: var(--surface);
   color: var(--navy); border: 1px solid var(--border); }
 .actions button:hover { border-color: var(--gold); background: var(--surface); }
-.chart { margin: 16px 0 0; background: var(--surface); border-radius: var(--radius); padding: 8px; }
+.chart { margin: 16px 0 0; background: var(--surface); border-radius: var(--radius); padding: 8px; border-top: 2px solid var(--gold); }
 .chart svg { width: 100%; height: auto; display: block; }
 .chart .grid { stroke: var(--line); }
 .chart .axis { font-size: 11px; fill: var(--muted); }
@@ -99,12 +119,20 @@ th:nth-child(2), td:nth-child(2) { text-align: left; }
 .legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 12px; padding: 6px 4px 0; }
 .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 5px; }
 
+/* Footer */
+.site-footer { background: var(--navy-deep); color: rgba(255, 255, 255, .7); padding: 28px var(--gutter); font-size: 14px; }
+.site-footer .eyebrow { margin-bottom: 4px; }
+.site-footer a { color: #fff; text-decoration: none; border-bottom: 1px solid var(--gold); }
+.site-footer a:hover { color: var(--gold-soft); }
+
 @media print {
   body { background: #fff; }
   .masthead { background: #fff; color: #000; padding: 0 0 12px; }
   .masthead .eyebrow, .masthead-tag { color: #000; }
-  form, .actions, #results > p.hint { display: none; }
-  main { max-width: none; }
+  form, .actions, #results > p.hint, .site-footer { display: none; }
+  main { max-width: none; padding: 0; }
+  .masthead::after { display: none; }
+  tbody tr:not(.note):nth-child(even) td { background: none; }
   .table-wrap { max-height: none; overflow: visible; }
   thead th { position: static; }
   table { font-size: 10px; }

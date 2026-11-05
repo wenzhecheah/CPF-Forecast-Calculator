@@ -482,9 +482,11 @@ function niceStep(max, count) {
 }
 
 // Stacked bars of OA, SA/RA and MA at the start of each year, with lines at
-// the RA age and the CPF LIFE start age.
-function chartSVG(rows, config) {
-  const W = 720, H = 260, L = 52, R = 8, T = 12, B = 26;
+// the RA age and the CPF LIFE start age. Drawn at `width` pixels (at least
+// 320), so text stays the same size on any screen.
+function chartSVG(rows, config, width) {
+  const W = Math.max(320, Math.round(width)), H = Math.round(Math.min(360, Math.max(260, W * 0.25)));
+  const L = 52, R = 8, T = 12, B = 26;
   const pw = W - L - R, ph = H - T - B;
   const stacks = rows.map(r => [Math.max(0, r.oa), Math.max(0, r.sa + r.premiumLeft), Math.max(0, r.ma)]);
   const maxTotal = Math.max(1, ...stacks.map(s => s[0] + s[1] + s[2]));
@@ -494,7 +496,7 @@ function chartSVG(rows, config) {
   const slot = pw / rows.length;
   const bw = Math.max(1, slot * 0.78);
   const x = i => L + i * slot + (slot - bw) / 2;
-  const labelEvery = Math.ceil(rows.length / 12);
+  const labelEvery = Math.ceil(rows.length / Math.floor(pw / 50)); // an age label every 50px or more
   const parts = [];
   for (let v = 0; v <= top + 0.5; v += step) {
     parts.push(`<line class="grid" x1="${L}" x2="${W - R}" y1="${y(v)}" y2="${y(v)}"/>
@@ -587,6 +589,9 @@ function downloadCSV(rows) {
 
 // ---- Calculate ----------------------------------------------------------------
 
+// Width available for the chart: the results area less the chart's padding.
+const chartWidth = () => byId('results').clientWidth - 16;
+
 let current = null; // the latest forecast: { rows, inputs, config, items }
 
 function render() {
@@ -604,7 +609,7 @@ function render() {
       <span id="actionStatus" class="hint" role="status"></span>
     </div>
     ${pinned ? '<p class="hint">Change the form and calculate again to compare with the kept scenario.</p>' : ''}
-    ${chartSVG(rows, config)}
+    ${chartSVG(rows, config, chartWidth())}
     ${tableHTML(rows, cols)}
     ${footnoteHTML(inputs, config)}`;
 
@@ -636,6 +641,16 @@ function calculate() {
   history.replaceState(null, '', `#${formToHash()}`); // the address is now a link to this forecast
   return true;
 }
+
+// Redraw the chart at the new width when the window is resized.
+let resizeTimer;
+window.addEventListener('resize', () => {
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(() => {
+    const chart = document.querySelector('#results .chart');
+    if (current && chart) chart.outerHTML = chartSVG(current.rows, current.config, chartWidth());
+  }, 150);
+});
 
 form.addEventListener('submit', e => {
   e.preventDefault();
