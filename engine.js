@@ -93,36 +93,55 @@ function formRA(bal, birthDate, config) {
            ersFellBack: wantsERS && target !== sums.ers };
 }
 
-// A year's contributions for a salary: 12 months of Ordinary Wages plus the
-// bonus (config.bonusMonths of salary, as Additional Wages). Self-employed
-// members ('self') pay only MediSave, on 12 months of income as net trade
-// income, at their age as at 1 January (one less than the age reached).
-// Returns yearly { total, employee, employer, oa, sa, ma }.
-function contributionsForYear(age, year, salary, memberType, config) {
+// Interest months for contributions or payments made monthly over `months`
+// months: config.assumptions.contributionInterestMonths for a full year, and
+// in proportion for part of a year (each month's amount earns from the month
+// after, so n months earn on average (n - 1) / 2 months of interest).
+const interestMonths = (months, config) => config.assumptions.contributionInterestMonths * (months - 1) / 11;
+
+// A year's contributions for a salary: Ordinary Wages for the months from
+// `fromMonth` to December (all 12, except in the forecast's first year), plus
+// the bonus (config.bonusMonths of salary, as Additional Wages) in proportion.
+// CPF's rates and allocation change from the month after the birthday month:
+// up to and including `birthMonth` they are those for the age band before the
+// birthday (looked up with `age`, the age reached this year), and after it
+// those for the band after (looked up with age + 1, since `upTo` bands count
+// "above 55" from the month after the 55th birthday, and so on).
+// Self-employed members ('self') pay only MediSave, on 12 months of income as
+// net trade income at their age as at 1 January (one less than the age
+// reached), in proportion for part of a year.
+// Returns { total, employee, employer, oa, sa, ma } for those months.
+function contributionsForYear(age, year, salary, memberType, config, fromMonth = 1, birthMonth = 12) {
+  const months = 13 - fromMonth;
   if (memberType === 'self') {
-    const ma = getSelfEmployedMediSave(salary * 12, age - 1);
+    const ma = getSelfEmployedMediSave(salary * 12, age - 1) * months / 12;
     return { total: ma, employee: ma, employer: 0, oa: 0, sa: 0, ma };
   }
-  const m = getMonthlyContribution(salary, age, year, memberType);
-  const b = getBonusContribution(salary * config.bonusMonths, salary, age, year, memberType);
-  const sum = k => m[k] * 12 + b[k];
-  return { total: sum('total'), employee: sum('employee'), employer: sum('employer'),
-           oa: sum('oa'), sa: sum('sa'), ma: sum('ma') };
+  const before = Math.min(months, Math.max(0, birthMonth - fromMonth + 1));
+  const result = { total: 0, employee: 0, employer: 0, oa: 0, sa: 0, ma: 0 };
+  for (const [bandAge, n] of [[age, before], [age + 1, months - before]]) {
+    if (n === 0) continue;
+    const m = getMonthlyContribution(salary, bandAge, year, memberType);
+    const b = getBonusContribution(salary * config.bonusMonths, salary, bandAge, year, memberType);
+    for (const k in result) result[k] += m[k] * n + b[k] * n / 12;
+  }
+  return result;
 }
 
-// Add a year of contributions (from contributionsForYear). Contributions earn
-// interest for part of the year they're paid (config.assumptions.contributionInterestMonths).
+// Add a year of contributions (from contributionsForYear), paid monthly over
+// `months` months. Contributions earn interest for part of the year they're
+// paid (interestMonths).
 // Once the RA is formed, the RA share goes to the RA up to the current FRS
 // (counting savings used for CPF LIFE), then to OA.
 // Returns the year's totals and the interest they earned, for the table.
-function addContributions(bal, age, c, frs, rules, config) {
+function addContributions(bal, age, c, frs, rules, config, months = 12) {
   const year = { oa: c.oa, sa: c.sa, ma: c.ma };
   if (age >= RA_AGE) {
     const toRA = Math.min(year.sa, Math.max(0, frs - bal.sa - bal.lifeJoined));
     year.oa += year.sa - toRA;
     year.sa = toRA;
   }
-  const share = config.assumptions.contributionInterestMonths / 12; // fraction of a year
+  const share = interestMonths(months, config) / 12; // fraction of a year
   let interest = 0;
   for (const acct of ['oa', 'sa', 'ma']) {
     const earned = year[acct] * rules[acct] / 100 * share;
@@ -132,12 +151,12 @@ function addContributions(bal, age, c, frs, rules, config) {
   return { total: c.total, employee: c.employee, employer: c.employer, interest };
 }
 
-// A year of monthly housing loan payments from OA, as far as OA covers them
-// (the rest is paid in cash). Paid monthly, so they lose part of a year's OA
-// interest, the mirror of contributions earning it.
-// Returns { used, short, interestLost }.
-function payHousing(bal, yearly, oaRate, config) {
-  const lose = oaRate / 100 * config.assumptions.contributionInterestMonths / 12;
+// A year's monthly housing loan payments from OA (`yearly`, paid over `months`
+// months), as far as OA covers them (the rest is paid in cash). Paid monthly,
+// so they lose part of a year's OA interest, the mirror of contributions
+// earning it. Returns { used, short, interestLost }.
+function payHousing(bal, yearly, oaRate, config, months = 12) {
+  const lose = oaRate / 100 * interestMonths(months, config) / 12;
   const used = Math.min(yearly, Math.max(0, bal.oa) / (1 + lose));
   const interestLost = used * lose;
   bal.oa -= used + interestLost;
@@ -173,8 +192,10 @@ function addTopUps(bal, age, sums, bhs, state, config) {
 // The starting payout is CPF's own estimate if the user entered one. Otherwise,
 // for a plan with published estimates, it is estimated from the RA balance at
 // the earliest payout age (`base.ra`, or at a later age if the forecast starts
-// after that), as a { low, high } range when deferred. A plan without published
-// figures has no payout (null) unless CPF's estimate is entered.
+// after that), as a { low, high } range when deferred; for a woman it is
+// reduced by config.assumptions.femalePayoutReduction (CPF's figures are for
+// men). A plan without published figures has no payout (null) unless CPF's
+// estimate is entered.
 function startCpfLife(bal, base, startAge, config) {
   const plan = config.cpfLifePlan;
   const source = config.cpfEstimate > 0 ? 'cpf'
@@ -182,11 +203,17 @@ function startCpfLife(bal, base, startAge, config) {
   const monthly = source === 'cpf' ? { low: config.cpfEstimate, high: config.cpfEstimate }
     : source === 'app' ? getCpfLifePayout(base.ra, startAge - base.age)
     : null;
+  const forWoman = source === 'app' && config.sex === 'female';
+  if (forWoman) {
+    const keep = 1 - config.assumptions.femalePayoutReduction / 100;
+    monthly.low *= keep;
+    monthly.high *= keep;
+  }
   const premium = bal.sa;
   bal.life += premium;       // premium balance: drawn down by payouts
   bal.lifeJoined += premium; // fixed: what was used to join CPF LIFE
   bal.sa = 0;
-  return { monthly, premium, base, startAge, plan, source, sex: config.sex };
+  return { monthly, premium, base, startAge, plan, source, forWoman };
 }
 
 // Payout in a later year: the starting payout plus the plan's yearly increase.
@@ -199,6 +226,9 @@ function payoutInYear(life, age) {
 // Inputs: currentAge is the age the person reaches this calendar year. Each row
 // is one calendar year, so CPF's "the year you turn 55/65" rules line up.
 // Each row holds start-of-year balances, then what happened during the year.
+// The first row's balances are today's: inputs.firstYearMonths is how many
+// months of this year are still to come (12 if not given), and only those
+// months' contributions, housing loan payments and premiums are counted.
 function forecast(inputs, config) {
   setProjection(config.projectSums ? config.assumptions.growth : null);
   const rows = [];
@@ -208,10 +238,13 @@ function forecast(inputs, config) {
   // Payouts can only be modelled if they haven't started yet.
   const modelPayouts = inputs.currentAge <= payoutAge;
   const downpaymentAge = config.oaDownpaymentAge || inputs.currentAge;
+  const birthMonth = Number(inputs.birthDate.slice(5, 7));
+  const firstYearMonths = inputs.firstYearMonths ?? 12;
   let base = null, started = null;
   for (let age = inputs.currentAge; age <= inputs.targetAge; age++) {
     const year = inputs.birthYear + age; // the calendar year the person turns `age`
     const yearsIn = age - inputs.currentAge;
+    const months = yearsIn === 0 ? firstYearMonths : 12; // months of the year still to come
     // The RA is formed in the year the person turns 55 (only if they start below 55).
     const ra = age === RA_AGE && inputs.currentAge < RA_AGE
       ? formRA(bal, inputs.birthDate, config) : null;
@@ -234,7 +267,7 @@ function forecast(inputs, config) {
       row.housingShort = config.oaDownpayment - row.housing;
       bal.oa -= row.housing;
     }
-    const premium = config.maPremiums * (1 + config.maPremiumGrowth / 100) ** yearsIn;
+    const premium = config.maPremiums * (1 + config.maPremiumGrowth / 100) ** yearsIn * months / 12;
     row.premiums = Math.min(premium, Math.max(0, bal.ma));
     row.premiumsShort = premium - row.premiums;
     bal.ma -= row.premiums;
@@ -253,15 +286,15 @@ function forecast(inputs, config) {
     row.interest = interest.oa + interest.sa + interest.ma;
     if (inputs.salary > 0 && age <= config.workUntilAge) {
       row.salary = inputs.salary * (1 + config.salaryGrowth / 100) ** yearsIn;
-      const c = contributionsForYear(age, year, row.salary, state.memberType, config);
-      row.contributions = addContributions(bal, age, c, sums.frs, rules, config);
+      const c = contributionsForYear(age, year, row.salary, state.memberType, config, 13 - months, birthMonth);
+      row.contributions = addContributions(bal, age, c, sums.frs, rules, config, months);
       row.interest += row.contributions.interest;
     }
     if (state.memberType !== 'self') state.memberType = CPF_DATA.contributions.memberTypes[state.memberType].next;
 
     // Monthly housing loan payments from OA.
     if (config.oaHousingMonthly > 0 && (!config.oaHousingUntilAge || age <= config.oaHousingUntilAge)) {
-      const paid = payHousing(bal, config.oaHousingMonthly * 12, rules.oa, config);
+      const paid = payHousing(bal, config.oaHousingMonthly * months, rules.oa, config, months);
       row.housing += paid.used;
       row.housingShort += paid.short;
       row.interest -= paid.interestLost;

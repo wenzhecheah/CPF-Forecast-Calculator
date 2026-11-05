@@ -23,6 +23,7 @@ const byId = id => document.getElementById(id);
 const { raAge, bhsFixedAge } = CPF_DATA.milestones;
 const { growth } = CPF_CONFIG.assumptions;
 const { maxAge } = CPF_CONFIG;
+const femaleReduction = CPF_CONFIG.assumptions.femalePayoutReduction;
 for (const id of ['workUntilAge', 'targetAge', 'oaDownpaymentAge', 'oaHousingUntilAge', 'topUpUntilAge']) {
   Object.assign(byId(id), { min: 0, max: maxAge });
 }
@@ -40,6 +41,7 @@ const pageText = {
     home annual value up to ${wholeMoney(CPF_DATA.mrss.maxAnnualValue)}, at most
     ${CPF_DATA.mrss.maxProperties === 1 ? 'one property' : `${CPF_DATA.mrss.maxProperties} properties`}.`,
   minWithdrawal: wholeMoney(CPF_DATA.withdrawal.minAtRaAge),
+  femaleReduction: String(CPF_CONFIG.assumptions.femalePayoutReduction),
   latestSums: `${latestRetirementSumsYear()} (retirement sums) and ${latestYear(CPF_DATA.bhs)} (BHS)`,
   growthText: `${growth.retirementSums}% a year (retirement sums) and ${growth.bhs}% a year (BHS)`,
 };
@@ -251,6 +253,9 @@ function readForm() {
   const inputs = {
     // Age reached this calendar year: the forecast runs year by year from now.
     currentAge: new Date().getFullYear() - birthYear, birthYear, birthDate,
+    // The balances are today's, so the first year counts only the months still
+    // to come, including this one.
+    firstYearMonths: 12 - new Date().getMonth(),
     oa: val('oa'), sa: val('sa'), ma: val('ma'),
     salary: val('salary'), targetAge: Number(targetAgeInput.value) || 0,
   };
@@ -347,9 +352,10 @@ function lifeNote(life) {
     ? ` Deferring ${deferred} year${deferred > 1 ? 's' : ''} adds ${low}% a year (RA interest
       only) to up to ${high}% a year (CPF's maximum); CPF sets the actual figure when payouts start.`
     : '';
-  const female = life.sex === 'female'
-    ? ` <strong>CPF's figures are for men</strong>: a woman's payout on the same RA is lower.
-      Use CPF's Monthly Payout Estimator for your figure.`
+  const female = life.forWoman
+    ? ` <strong>Approximate figure for a woman</strong>: CPF publishes payouts for men only,
+      so this is ${femaleReduction}% below the men's figure. Use CPF's Monthly Payout
+      Estimator for your own figure.`
     : '';
   return `${intro} Estimated ${payoutText(life.monthly)}/month, based on an RA of
     ${money(life.base.ra)} at ${life.base.age}.${range}${female}`;
@@ -419,7 +425,8 @@ function summarize(rows, inputs, config) {
   }
   if (lifeRow) {
     const m = lifeRow.life.monthly;
-    items.push({ key: 'payout', label: `CPF LIFE from ${lifeRow.life.startAge}, per month`, value: m ? m.low : null,
+    const approx = lifeRow.life.forWoman ? ' (approx. for women)' : '';
+    items.push({ key: 'payout', label: `CPF LIFE from ${lifeRow.life.startAge}, per month${approx}`, value: m ? m.low : null,
                  text: m ? payoutText(m).replace(/\s+/g, ' ') : 'Needs CPF\'s estimate' });
   }
   items.push({ key: 'contributions', label: 'Contributions', value: sum(r => r.contributions?.total) });
@@ -540,8 +547,12 @@ function chartSVG(rows, config, width) {
 function footnoteHTML(inputs, config) {
   const plan = CPF_DATA.cpfLife.plans[config.cpfLifePlan];
   const rateYears = CPF_DATA.contributions.rates.full.map(t => t.from).join(' and ');
+  const left = inputs.firstYearMonths;
   return `<p class="footnote">Each row is a calendar year; age is the age reached that year.
-      Balances are at the start of the year. Contributions use CPF's contribution and
+      Balances are at the start of the year, except the first row, which shows the balances
+      you entered; that year counts only the ${left} month${left === 1 ? '' : 's'} still to come
+      (contributions, housing loan payments and MediSave premiums). Rates change from the
+      month after each birthday, as CPF's do. Contributions use CPF's contribution and
       allocation rates for ${rateYears} (later years reuse the latest), on salary up to
       ${wholeMoney(CPF_DATA.contributions.owCeiling)} a month plus bonuses within the
       ${wholeMoney(CPF_DATA.contributions.annualCeiling)} yearly ceiling, credited monthly.
@@ -559,7 +570,8 @@ function footnoteHTML(inputs, config) {
         : !plan.published
         ? `${plan.label} Plan payouts need the starting figure from CPF's Monthly Payout Estimator.`
         : `${plan.label} Plan payouts are estimates from CPF's published
-      ${CPF_DATA.cpfLife.estimates.cohort} figures (male), scaled to the RA balance. Deferred
+      ${CPF_DATA.cpfLife.estimates.cohort} figures (male), scaled to the RA balance${config.sex === 'female'
+        ? `, less ${femaleReduction}% for a woman (an approximation: CPF publishes no figures for women)` : ''}. Deferred
       payouts are shown as a range, from ${CPF_DATA.cpfLife.deferral.low}% to
       ${CPF_DATA.cpfLife.deferral.high}% more per year deferred.`}
       ${plan.escalation ? `${plan.label} Plan payouts rise ${plan.escalation}% every year.` : ''}

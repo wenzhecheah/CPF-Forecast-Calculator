@@ -14,6 +14,13 @@ const CPF_CONFIG = {
     // sums: the 3.5% a year CPF set for 2023 to 2027. BHS: its average rise
     // from 2016 ($49,800) to 2026 ($79,000), about 4.7% a year.
     growth: { retirementSums: 3.5, bhs: 4.7 },
+    // CPF publishes CPF LIFE payout estimates for men only; women get less on
+    // the same savings because they live longer on average. For women, the
+    // app's estimate is the men's figure less this %. An approximation, not a
+    // CPF figure: CPF's 2025 payout examples give each payout as a range whose
+    // low end is about 7% below the high end (the high end matches CPF's
+    // men's figures). Not applied to a figure from CPF's own estimator.
+    femalePayoutReduction: 7,
   },
 
   // Oldest age the calculator forecasts to (form limits and checks).
@@ -81,7 +88,8 @@ const CPF_CONFIG = {
   payoutAge: 65,
   // CPF LIFE plan: a key of CPF_DATA.cpfLife.plans.
   cpfLifePlan: 'standard',
-  // 'male' or 'female': CPF's published payout figures are for men.
+  // 'male' or 'female'. CPF's published payout figures are for men; for women
+  // the estimate is reduced by assumptions.femalePayoutReduction.
   sex: 'male',
   // Starting monthly payout from CPF's Monthly Payout Estimator, if the user has
   // one. Required for Escalating and Basic; for Standard it replaces the app's estimate.
