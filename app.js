@@ -380,6 +380,14 @@ function rowNotes(rows) {
     add(premiumsShort, `MediSave can't cover all the premiums from age ${premiumsShort.age};
       the rest would be paid in cash.`);
   }
+  // The first year that starts with the CPF LIFE money all paid out. Payouts
+  // carry on (CPF LIFE pays for life), so say so: the SA/RA column falling to
+  // nothing could otherwise read as retirement income stopping.
+  const usedUp = rows.find((r, i) => i > 0 && r.payout && r.premiumLeft === 0 && rows[i - 1].premiumLeft > 0);
+  if (usedUp) {
+    add(usedUp, `CPF LIFE money used up by age ${usedUp.age}: <strong>payouts continue for
+      life</strong>, but nothing is left from CPF LIFE for beneficiaries.`);
+  }
   const grants = rows.filter(r => r.topUps?.grant > 0);
   const totalGrant = grants.reduce((s, r) => s + r.topUps.grant, 0);
   if (totalGrant >= CPF_DATA.mrss.lifetimeCap - 0.5) {
