@@ -1,9 +1,11 @@
 # CPF Forecast Calculator
 
-Forecasts CPF balances (OA, SA/RA, MA) year by year, with salary contributions,
-interest, MediSave overflow, RA formation at 55 and CPF LIFE payouts.
+A Voyage Wealth Advisory tool that forecasts CPF balances (OA, SA/RA, MA) year
+by year, with salary contributions, interest, MediSave overflow, RA formation
+at 55 and CPF LIFE payouts.
 
-Open `index.html` in a browser to use it. No install or build step.
+Open `index.html` in a browser to use it. There is no install or build step,
+and nothing you enter leaves the browser.
 
 ## What it models
 
@@ -11,6 +13,9 @@ Open `index.html` in a browser to use it. No install or build step.
   CPF's rates by year (including the higher rates for ages 55 to 65 from 2027),
   graduated rates for SPRs in their 1st and 2nd year, and MediSave-only
   contributions for the self-employed
+- Interest, including the extra interest on the first $60,000 (and the
+  additional extra interest from 55)
+- MediSave savings above the Basic Healthcare Sum (BHS) moving to SA/RA, then OA
 - Housing paid from OA: a one-off payment and monthly loan payments
 - Insurance premiums paid from MediSave
 - Cash top-ups to SA/RA and MediSave, OA-to-SA/RA transfers, within CPF's
@@ -21,10 +26,39 @@ Open `index.html` in a browser to use it. No install or build step.
 - Optionally, projected retirement sums and BHS for years CPF hasn't
   published yet
 
-Results show headline figures, a chart, the year-by-year table, and can be
-compared with a kept scenario, downloaded as CSV, printed, or shared: the
-address bar holds a link to the forecast (the numbers are in the part after
-`#`, which browsers don't send to the web server).
+## Using it
+
+Fill in the form and press **Calculate**. On a wide screen the form shows in
+two columns: your details, work and forecast settings on the left, and the
+optional sections (housing, MediSave premiums, top-ups) and "At 55" choices on
+the right. On a phone it is one column.
+
+Results show headline figures, a chart, and the year-by-year table, with notes
+on the years where something important happens (the RA is formed, payouts
+start, OA can't cover the housing payments). You can:
+
+- **Compare scenarios:** keep one forecast, change the form, and calculate again
+  to see both side by side with the difference.
+- **Download a CSV** of the table, or **print or save as PDF**.
+- **Share a link:** the address bar holds a link to the forecast. The numbers
+  are in the part after `#`, which browsers don't send to the web server, but
+  anyone given the link can see them.
+
+## Accuracy and limits
+
+This is an estimate, not advice. In particular:
+
+- Each row is a calendar year, and the current year is counted in full. For
+  the most accurate first year, enter your balances as at 1 January (your CPF
+  statement shows them).
+- Contributions are credited monthly, so a year's contributions earn about 5.5
+  months of interest in that year.
+- Years after CPF's latest published figures reuse the latest ones, unless you
+  tick the option to project retirement sums and the BHS. The interest rate
+  floors are assumed to carry on.
+- CPF only publishes Standard Plan payout estimates, for men. The calculator
+  says so for women; for Escalating and Basic you need the starting payout
+  from CPF's Monthly Payout Estimator.
 
 ## Files
 
@@ -36,3 +70,29 @@ address bar holds a link to the forecast (the numbers are in the part after
 | `engine.js` | The forecast calculations |
 | `app.js` | The page: form, results, chart, sharing and export |
 | `index.html`, `style.css` | Page layout and styling |
+
+## Updating it
+
+- **New CPF figures:** add or change rows in `cpf-data.js`; nothing else needs
+  to change. Its comments say when CPF usually announces each figure. The
+  figures were last checked against cpf.gov.sg in October 2026.
+- **Default values:** change them in `config.js`.
+- **A new setting:** add it to `config.js` with its default, and add a form
+  field in `index.html` whose `id` is the setting's name. The form fills the
+  field from the default, and passes the field's value to the calculations
+  as the same type as the default. Then use `config.<name>` in `engine.js`.
+- **Colours and fonts:** the colours are set once at the top of `style.css`,
+  taken from the Voyage Wealth Advisory website (vwagroup.sg): navy
+  `#1B1464`, gold `#C99E10`, with cream and soft blue as accents. The fonts
+  are Jost and Cormorant Garamond, loaded from Google Fonts; without an
+  internet connection the page falls back to the system font.
+
+## History
+
+- **Branding:** restyled in the Voyage Wealth Advisory colours and fonts, with
+  a navy header and footer and gold accents.
+- **Wider layout:** the page widened from 720px to 1440px so the forecast table
+  fits on a typical laptop or desktop screen, with a two-column form on wide
+  screens and a chart drawn at the screen's width.
+- **Code tidy-up:** removed duplicated code without changing any results, and
+  fixed the bonus field still showing for self-employed members.
