@@ -253,6 +253,9 @@ function readForm() {
   const inputs = {
     // Age reached this calendar year: the forecast runs year by year from now.
     currentAge: new Date().getFullYear() - birthYear, birthYear, birthDate,
+    // The balances are today's, so the first year counts only the months still
+    // to come, including this one.
+    firstYearMonths: 12 - new Date().getMonth(),
     oa: val('oa'), sa: val('sa'), ma: val('ma'),
     salary: val('salary'), targetAge: Number(targetAgeInput.value) || 0,
   };
@@ -544,8 +547,12 @@ function chartSVG(rows, config, width) {
 function footnoteHTML(inputs, config) {
   const plan = CPF_DATA.cpfLife.plans[config.cpfLifePlan];
   const rateYears = CPF_DATA.contributions.rates.full.map(t => t.from).join(' and ');
+  const left = inputs.firstYearMonths;
   return `<p class="footnote">Each row is a calendar year; age is the age reached that year.
-      Balances are at the start of the year. Contributions use CPF's contribution and
+      Balances are at the start of the year, except the first row, which shows the balances
+      you entered; that year counts only the ${left} month${left === 1 ? '' : 's'} still to come
+      (contributions, housing loan payments and MediSave premiums). Rates change from the
+      month after each birthday, as CPF's do. Contributions use CPF's contribution and
       allocation rates for ${rateYears} (later years reuse the latest), on salary up to
       ${wholeMoney(CPF_DATA.contributions.owCeiling)} a month plus bonuses within the
       ${wholeMoney(CPF_DATA.contributions.annualCeiling)} yearly ceiling, credited monthly.

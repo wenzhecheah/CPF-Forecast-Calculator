@@ -9,7 +9,8 @@
 // - Contribution / allocation rates: usually change on 1 January.
 // Forecast years beyond the last row reuse the last row's figures, unless the
 // user chooses to project retirement sums and the BHS (see config.js).
-// Last verified Oct 2026 against cpf.gov.sg.
+// Last verified 5 Nov 2026 against cpf.gov.sg (rate and allocation tables,
+// SEP MediSave table, interest rates, retirement sums, BHS, CPF LIFE estimates).
 const CPF_DATA = {
   // Ages and years where CPF rules change.
   milestones: {
@@ -163,7 +164,8 @@ const CPF_DATA = {
         { upTo: Infinity, sa: 0.08,   ma: 0.84 },
       ] },
       // From 2027 the whole rate increase for above 55 to 65 goes to the RA
-      // (CPF: "fully allocated to their Retirement Account"). As % of salary:
+      // (CPF: "fully allocated to their Retirement Account"). CPF hasn't
+      // published a 2027 allocation table yet; these follow from that rule. As % of salary:
       // above 55-60 RA 13, MA 10.5 (of 35.5); above 60-65 RA 12, MA 10.5 (of 26).
       { from: 2027, bands: [
         { upTo: 35,       sa: 0.1621, ma: 0.2162 },

@@ -48,11 +48,18 @@ start, OA can't cover the housing payments). You can:
 
 This is an estimate, not advice. In particular:
 
-- Each row is a calendar year, and the current year is counted in full. For
-  the most accurate first year, enter your balances as at 1 January (your CPF
-  statement shows them).
+- Each row is a calendar year. Enter today's balances: the first year counts
+  only the months still to come (contributions, housing loan payments and
+  MediSave premiums), so contributions already in your balances aren't
+  counted twice.
+- Contribution and allocation rates change from the month after each
+  birthday, as CPF's do (at 35, 45, 50, 55, 60, 65 and 70).
 - Contributions are credited monthly, so a year's contributions earn about 5.5
   months of interest in that year.
+- Other events happen at the start of the year you reach the age: the RA is
+  formed in the year you turn 55, and CPF LIFE starts in the year you choose.
+  This matches CPF's own payout estimates, which assume 10 years of growth
+  from 55 to 65.
 - Years after CPF's latest published figures reuse the latest ones, unless you
   tick the option to project retirement sums and the BHS. The interest rate
   floors are assumed to carry on.
@@ -81,7 +88,7 @@ This is an estimate, not advice. In particular:
 
 - **New CPF figures:** add or change rows in `cpf-data.js`; nothing else needs
   to change. Its comments say when CPF usually announces each figure. The
-  figures were last checked against cpf.gov.sg in October 2026.
+  figures were last checked against cpf.gov.sg on 5 November 2026.
 - **Default values:** change them in `config.js`.
 - **A new setting:** add it to `config.js` with its default, and add a form
   field in `index.html` whose `id` is the setting's name. The form fills the
