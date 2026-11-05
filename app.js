@@ -235,46 +235,28 @@ function validate() {
   return showError(null, null);
 }
 
-// Inputs and settings for the engine, from the form.
+// A setting's value from its form field, typed like its default in config.js.
+function fieldValue(el) {
+  if (el.type === 'checkbox') return el.checked;
+  if (el.classList.contains('money')) return parseMoney(el.value);
+  return typeof CPF_CONFIG[el.id] === 'number' ? Number(el.value) || 0 : el.value;
+}
+
+// Inputs and settings for the engine, from the form. Every field whose id is
+// a setting in config.js sets that setting.
 function readForm() {
   const val = id => parseMoney(byId(id).value);
-  const num = id => Number(byId(id).value) || 0;
   const birthDate = byId('dob').value; // 'YYYY-MM-DD'
   const birthYear = parseDate(birthDate).getFullYear();
   const inputs = {
     // Age reached this calendar year: the forecast runs year by year from now.
     currentAge: new Date().getFullYear() - birthYear, birthYear, birthDate,
     oa: val('oa'), sa: val('sa'), ma: val('ma'),
-    salary: val('salary'), targetAge: num('targetAge'),
+    salary: val('salary'), targetAge: Number(targetAgeInput.value) || 0,
   };
-  const config = {
-    ...CPF_CONFIG,
-    memberType: memberSelect.value,
-    bonusMonths: memberSelect.value === 'self' ? 0 : num('bonusMonths'),
-    salaryGrowth: num('salaryGrowth'),
-    oaDownpayment: val('oaDownpayment'),
-    oaDownpaymentAge: num('oaDownpaymentAge'),
-    oaHousingMonthly: val('oaHousingMonthly'),
-    oaHousingUntilAge: num('oaHousingUntilAge'),
-    maPremiums: val('maPremiums'),
-    maPremiumGrowth: num('maPremiumGrowth'),
-    topUpSA: val('topUpSA'),
-    topUpMA: val('topUpMA'),
-    transferOA: val('transferOA'),
-    topUpUntilAge: num('topUpUntilAge'),
-    mrssEligible: byId('mrssEligible').checked,
-    maOverflow: byId('maOverflow').value,
-    raTarget: byId('raTarget').value,
-    pledged: pledged.checked,
-    withdrawAboveBRS: withdraw.checked,
-    withdrawAt55: byId('withdrawAt55').checked,
-    projectSums: byId('projectSums').checked,
-    workUntilAge: num('workUntilAge'),
-    payoutAge: Number(payoutSelect.value),
-    cpfLifePlan: planSelect.value,
-    sex: byId('sex').value,
-    cpfEstimate: val('cpfEstimate'),
-  };
+  const config = { ...CPF_CONFIG };
+  for (const el of fields) if (el.id in CPF_CONFIG) config[el.id] = fieldValue(el);
+  if (config.memberType === 'self') config.bonusMonths = 0; // the bonus field is hidden
   return { inputs, config };
 }
 
@@ -454,18 +436,20 @@ function summarize(rows, inputs, config) {
 
 let pinned = null; // a summary kept for comparison: { items, toAge }
 
+// A summary figure as shown: its text, or its value in whole dollars.
+const itemText = i => !i ? '–' : i.text ?? (i.value == null ? '–' : wholeMoney(Math.round(i.value)));
+
 function summaryHTML(items) {
   if (!pinned) {
     return `<div class="cards">${items.map(i => `
       <div class="card${i.main ? ' main' : ''}"><div class="card-label">${i.label}</div>
-        <div class="card-value">${i.text ?? (i.value == null ? '–' : wholeMoney(Math.round(i.value)))}</div></div>`).join('')}
+        <div class="card-value">${itemText(i)}</div></div>`).join('')}
     </div>`;
   }
   // Side-by-side: kept scenario, this one, and the difference. Figures are
   // matched by key, so they line up even if the forecast ages differ.
   const keys = [...new Set([...items.map(i => i.key), ...pinned.items.map(i => i.key)])];
   const find = (list, key) => list.find(i => i.key === key);
-  const show = i => !i ? '–' : i.text ?? (i.value == null ? '–' : wholeMoney(Math.round(i.value)));
   const toAge = current.rows[current.rows.length - 1].age;
   const ages = pinned.toAge === toAge ? '' : ` (to ${pinned.toAge})`;
   return `
@@ -479,7 +463,7 @@ function summaryHTML(items) {
         const diff = a?.value != null && b?.value != null ? b.value - a.value : null;
         const diffText = diff == null || Math.abs(diff) < 0.5 ? '–'
           : `${diff > 0 ? '+' : '−'}${wholeMoney(Math.round(Math.abs(diff)))}`;
-        return `<tr><td>${label}</td><td>${show(a)}</td><td>${show(b)}</td>
+        return `<tr><td>${label}</td><td>${itemText(a)}</td><td>${itemText(b)}</td>
           <td class="${diff > 0.5 ? 'up' : diff < -0.5 ? 'down' : ''}">${diffText}</td></tr>`;
       }).join('')}</tbody>
     </table></div>`;

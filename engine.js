@@ -2,7 +2,7 @@
 // CPF figures and rules come from the database via cpf-lookups.js; modelling
 // assumptions and user choices come from `config` (see config.js).
 
-const RA_AGE = () => CPF_DATA.milestones.raAge;
+const RA_AGE = CPF_DATA.milestones.raAge;
 
 // Extra interest for one year, given start-of-year balances and the age's
 // interest rules (getInterestRules). Returns how much extra interest each
@@ -56,7 +56,7 @@ function overflowMA(bal, bhs, frs, config) {
 // from OA first.
 // Returns what happened, for the results table.
 function formRA(bal, birthDate, config) {
-  const sums = getRetirementSums(birthDate, Number(birthDate.slice(0, 4)) + RA_AGE());
+  const sums = getRetirementSums(birthDate, Number(birthDate.slice(0, 4)) + RA_AGE);
   const total = bal.sa + bal.oa;
   const wantsERS = config.raTarget === 'ers';
   const target = wantsERS && total >= sums.ers ? sums.ers : sums.frs;
@@ -117,7 +117,7 @@ function contributionsForYear(age, year, salary, memberType, config) {
 // Returns the year's totals and the interest they earned, for the table.
 function addContributions(bal, age, c, frs, rules, config) {
   const year = { oa: c.oa, sa: c.sa, ma: c.ma };
-  if (age >= RA_AGE()) {
+  if (age >= RA_AGE) {
     const toRA = Math.min(year.sa, Math.max(0, frs - bal.sa - bal.lifeJoined));
     year.oa += year.sa - toRA;
     year.sa = toRA;
@@ -146,15 +146,15 @@ function payHousing(bal, yearly, oaRate, config) {
 
 // Voluntary top-ups, made at the end of the year within CPF's limits: SA up to
 // the current FRS (RA: up to the current ERS, counting savings used for CPF
-// LIFE), MA up to the BHS. Cash goes in before OA transfers. With the MRSS,
+// LIFE), MA up to the BHS. `sums` are the year's retirement sums
+// (getCurrentSums). Cash goes in before OA transfers. With the MRSS,
 // cash top-ups to an RA below the current BRS are matched, up to the yearly
 // and lifetime caps (`state.mrssLeft`); CPF credits the grant by the following
 // March, which is treated here as the same year end.
 // Returns { cash, transfer, ma, grant }.
-function addTopUps(bal, age, year, bhs, state, config) {
-  const sums = getCurrentSums(year);
+function addTopUps(bal, age, sums, bhs, state, config) {
   const retirement = bal.sa + bal.lifeJoined;
-  let room = Math.max(0, (age >= RA_AGE() ? sums.ers : sums.frs) - retirement);
+  let room = Math.max(0, (age >= RA_AGE ? sums.ers : sums.frs) - retirement);
   const cash = Math.min(config.topUpSA, room);
   room -= cash;
   const transfer = Math.min(config.transferOA, room, Math.max(0, bal.oa));
@@ -213,7 +213,7 @@ function forecast(inputs, config) {
     const year = inputs.birthYear + age; // the calendar year the person turns `age`
     const yearsIn = age - inputs.currentAge;
     // The RA is formed in the year the person turns 55 (only if they start below 55).
-    const ra = age === RA_AGE() && inputs.currentAge < RA_AGE()
+    const ra = age === RA_AGE && inputs.currentAge < RA_AGE
       ? formRA(bal, inputs.birthDate, config) : null;
     // RA balance at 65 sets the payout (or today's balance if already past 65).
     if (modelPayouts && !base && age >= CPF_DATA.cpfLife.minAge) base = { ra: bal.sa, age };
@@ -221,6 +221,7 @@ function forecast(inputs, config) {
     if (life) started = life;
     const payout = started ? payoutInYear(started, age) : null;
     const bhs = getBHS(inputs.birthYear, year);
+    const sums = getCurrentSums(year);
     const row = { age, year, oa: bal.oa, sa: bal.sa, premiumLeft: bal.life, ma: bal.ma,
                   bhs, ra, life, payout, housing: 0, housingShort: 0 };
     rows.push(row);
@@ -253,7 +254,7 @@ function forecast(inputs, config) {
     if (inputs.salary > 0 && age <= config.workUntilAge) {
       row.salary = inputs.salary * (1 + config.salaryGrowth / 100) ** yearsIn;
       const c = contributionsForYear(age, year, row.salary, state.memberType, config);
-      row.contributions = addContributions(bal, age, c, getCurrentFRS(year), rules, config);
+      row.contributions = addContributions(bal, age, c, sums.frs, rules, config);
       row.interest += row.contributions.interest;
     }
     if (state.memberType !== 'self') state.memberType = CPF_DATA.contributions.memberTypes[state.memberType].next;
@@ -267,10 +268,10 @@ function forecast(inputs, config) {
     }
 
     if (!config.topUpUntilAge || age <= config.topUpUntilAge) {
-      row.topUps = addTopUps(bal, age, year, bhs, state, config);
+      row.topUps = addTopUps(bal, age, sums, bhs, state, config);
     }
 
-    const flow = overflowMA(bal, bhs, getCurrentFRS(year), config);
+    const flow = overflowMA(bal, bhs, sums.frs, config);
     row.overflowToSA = flow.toSA;
     row.overflowToOA = flow.toOA;
     // A year of payouts comes out of the CPF LIFE premium balance (what would go to

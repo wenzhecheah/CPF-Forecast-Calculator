@@ -49,30 +49,25 @@ function retirementSumsOn(date) {
 // The figures in effect for a calendar year (its latest cohort).
 const retirementSumsInYear = year => retirementSumsOn(`${year}-12-31`);
 
-// The FRS published for a calendar year. This is the cap used for SA/RA in
-// that year (e.g. when MA overflow or contributions top up the RA).
-function getCurrentFRS(year) {
-  return retirementSumsInYear(year).frs;
-}
-
-// All three sums in effect for a calendar year: the limits for top-ups (SA up
-// to the FRS, RA up to the ERS) and the MRSS check (RA below the BRS).
+// All three sums in effect for a calendar year: the FRS caps SA/RA in that
+// year (MA overflow, contributions to the RA); top-ups go up to the FRS (SA)
+// or ERS (RA); the MRSS checks the RA against the BRS.
 function getCurrentSums(year) {
   const { brs, frs, ers } = retirementSumsInYear(year);
   return { brs, frs, ers };
 }
 
 // Retirement sums for someone born on `birthDate` ('YYYY-MM-DD'), as at
-// calendar `year`: { brs, frs, ers, date, projected }, where `date` is their
-// raAge birthday. BRS/FRS are fixed by cohort; ERS follows the calendar year
-// from ersYearlyFromYear. BRS/ERS are null for Minimum Sum cohorts (none
-// published). Returns null if they reached raAge before the data starts.
+// calendar `year`: { brs, frs, ers, projected }. BRS/FRS are fixed by cohort;
+// ERS follows the calendar year from ersYearlyFromYear. BRS/ERS are null for
+// Minimum Sum cohorts (none published). Returns null if they reached raAge
+// before the data starts.
 function getRetirementSums(birthDate, year = new Date().getFullYear()) {
   const { raAge, ersYearlyFromYear } = CPF_DATA.milestones;
   const date = `${Number(birthDate.slice(0, 4)) + raAge}${birthDate.slice(4)}`;
   const cohort = retirementSumsOn(date);
   if (!cohort) return null;
-  const sums = { brs: cohort.brs ?? null, frs: cohort.frs, ers: cohort.ers ?? null, date,
+  const sums = { brs: cohort.brs ?? null, frs: cohort.frs, ers: cohort.ers ?? null,
                  projected: !!cohort.projected };
   const yearRA = Number(date.slice(0, 4));
   if (yearRA >= ersYearlyFromYear || year >= ersYearlyFromYear) {
@@ -118,11 +113,17 @@ function tableFor(tables, year) {
   return t.bands;
 }
 
-// Split a contribution into accounts by the allocation for the age and year.
-function allocate(total, age, year) {
+// Contribution rates (% of wages) for an age, calendar year and member type.
+const ratesFor = (age, year, memberType) =>
+  tableFor(CPF_DATA.contributions.rates[memberType], year).find(b => age <= b.upTo);
+
+// A contribution: { total, employee, employer, oa, sa, ma }, with the total
+// split into accounts by the allocation for the age and year.
+function contribution(employee, employer, age, year) {
+  const total = employee + employer;
   const split = tableFor(CPF_DATA.contributions.allocation, year).find(b => age <= b.upTo);
   const ma = total * split.ma, sa = total * split.sa;
-  return { oa: total - ma - sa, sa, ma };
+  return { total, employee, employer, oa: total - ma - sa, sa, ma };
 }
 
 // Monthly CPF contribution on a salary at a given age, in calendar `year`, for
@@ -130,29 +131,27 @@ function allocate(total, age, year) {
 // employer, oa, sa, ma }. Salary above the OW ceiling is ignored; low salaries
 // use CPF's lower rates (see contributions.lowWage).
 function getMonthlyContribution(salary, age, year, memberType = 'full') {
-  const { owCeiling, lowWage, rates } = CPF_DATA.contributions;
+  const { owCeiling, lowWage } = CPF_DATA.contributions;
   const wage = Math.min(Math.max(0, salary), owCeiling);
-  const rate = tableFor(rates[memberType], year).find(b => age <= b.upTo);
+  const rate = ratesFor(age, year, memberType);
   const employee = wage <= lowWage.employerOnly ? 0
     : wage <= lowWage.full ? lowWage.employeePhaseIn * rate.employee / 100 * (wage - lowWage.employerOnly)
     : wage * rate.employee / 100;
   const employer = wage <= lowWage.nil ? 0 : wage * rate.employer / 100;
-  const total = employee + employer;
-  return { total, employee, employer, ...allocate(total, age, year) };
+  return contribution(employee, employer, age, year);
 }
 
 // CPF contribution on a year's Additional Wages (bonuses), given the monthly
 // salary: AW are capped at the annual ceiling less the year's OW subject to
 // CPF, and use the same rates as salary. Same shape as getMonthlyContribution.
 function getBonusContribution(bonus, salary, age, year, memberType = 'full') {
-  const { owCeiling, annualCeiling, lowWage, rates } = CPF_DATA.contributions;
+  const { owCeiling, annualCeiling, lowWage } = CPF_DATA.contributions;
   const ow = Math.min(Math.max(0, salary), owCeiling) * 12;
   const aw = Math.min(Math.max(0, bonus), Math.max(0, annualCeiling - ow));
-  const rate = tableFor(rates[memberType], year).find(b => age <= b.upTo);
+  const rate = ratesFor(age, year, memberType);
   const employee = salary > lowWage.employerOnly ? aw * rate.employee / 100 : 0;
   const employer = salary > lowWage.nil ? aw * rate.employer / 100 : 0;
-  const total = employee + employer;
-  return { total, employee, employer, ...allocate(total, age, year), aw };
+  return contribution(employee, employer, age, year);
 }
 
 // Yearly MediSave contribution a self-employed person must pay on a year's
