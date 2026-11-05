@@ -254,7 +254,8 @@ const CPF_DATA = {
     // CPF's published estimates for members turning 55 in 2026: Standard Plan,
     // male, payouts from 65. `ra65` is the RA balance at 65 each one assumes.
     // CPF publishes no female figures; women's payouts are lower (longer life
-    // expectancy), so the app flags this.
+    // expectancy), so the app reduces the estimate for women by
+    // CPF_CONFIG.assumptions.femalePayoutReduction and labels it approximate.
     estimates: {
       cohort: 2026,
       points: [

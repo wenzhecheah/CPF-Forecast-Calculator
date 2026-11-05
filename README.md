@@ -56,9 +56,14 @@ This is an estimate, not advice. In particular:
 - Years after CPF's latest published figures reuse the latest ones, unless you
   tick the option to project retirement sums and the BHS. The interest rate
   floors are assumed to carry on.
-- CPF only publishes Standard Plan payout estimates, for men. The calculator
-  says so for women; for Escalating and Basic you need the starting payout
-  from CPF's Monthly Payout Estimator.
+- CPF only publishes Standard Plan payout estimates, and only for men. For
+  women the calculator takes 7% off the men's figure and labels it as
+  approximate. That 7% is not a CPF figure: CPF's 2025 payout examples give
+  each payout as a range about 7% wide, with the top matching CPF's men's
+  figures. It is set in `config.js` (`femalePayoutReduction`).
+- For Escalating and Basic, and for anyone who wants their own figure, enter
+  the starting payout from CPF's Monthly Payout Estimator; it is used as
+  entered, with no adjustment.
 
 ## Files
 

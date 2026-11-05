@@ -173,8 +173,10 @@ function addTopUps(bal, age, sums, bhs, state, config) {
 // The starting payout is CPF's own estimate if the user entered one. Otherwise,
 // for a plan with published estimates, it is estimated from the RA balance at
 // the earliest payout age (`base.ra`, or at a later age if the forecast starts
-// after that), as a { low, high } range when deferred. A plan without published
-// figures has no payout (null) unless CPF's estimate is entered.
+// after that), as a { low, high } range when deferred; for a woman it is
+// reduced by config.assumptions.femalePayoutReduction (CPF's figures are for
+// men). A plan without published figures has no payout (null) unless CPF's
+// estimate is entered.
 function startCpfLife(bal, base, startAge, config) {
   const plan = config.cpfLifePlan;
   const source = config.cpfEstimate > 0 ? 'cpf'
@@ -182,11 +184,17 @@ function startCpfLife(bal, base, startAge, config) {
   const monthly = source === 'cpf' ? { low: config.cpfEstimate, high: config.cpfEstimate }
     : source === 'app' ? getCpfLifePayout(base.ra, startAge - base.age)
     : null;
+  const forWoman = source === 'app' && config.sex === 'female';
+  if (forWoman) {
+    const keep = 1 - config.assumptions.femalePayoutReduction / 100;
+    monthly.low *= keep;
+    monthly.high *= keep;
+  }
   const premium = bal.sa;
   bal.life += premium;       // premium balance: drawn down by payouts
   bal.lifeJoined += premium; // fixed: what was used to join CPF LIFE
   bal.sa = 0;
-  return { monthly, premium, base, startAge, plan, source, sex: config.sex };
+  return { monthly, premium, base, startAge, plan, source, forWoman };
 }
 
 // Payout in a later year: the starting payout plus the plan's yearly increase.
