@@ -140,3 +140,9 @@ th:nth-child(2), td:nth-child(2) { text-align: left; }
   .chart, .card, tr { break-inside: avoid; }
   .chart, .card, .c-oa, .c-sa, .c-ma, .note td, thead th { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 }
+/* Link back to the homepage that lists all VWA tools. */
+.home-link { display: inline-block; margin-bottom: 14px; color: rgba(255, 255, 255, .7); text-decoration: none;
+  font-size: 12px; font-weight: 500; letter-spacing: .16em; text-transform: uppercase; }
+.home-link:hover { color: #fff; }
+.home-link:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+@media print { .home-link { display: none; } }
